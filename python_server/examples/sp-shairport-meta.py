@@ -62,6 +62,7 @@ class OutputScrollPhat(pivumeter.OutputDevice):
         pass
 
     def display_fft(self, bins):
+        print("display_vu was Called %s %s",left,right, bins)
         if self.busy: return
         self.busy = True
         #print(bins)
@@ -87,8 +88,8 @@ class OutputScrollPhat(pivumeter.OutputDevice):
         scrollphat.update()
         self.busy = False
 
-    def display_vu(self, left, right):
-        print("display_vu was Called %s %s",left,right)
+    def display_vu(self, left, right, bins):
+        print("display_vu was Called %s %s",left,right, bins)
         _paddingVal = 1
         _i=0
         _minVal=0
