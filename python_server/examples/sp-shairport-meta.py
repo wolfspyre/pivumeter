@@ -30,21 +30,24 @@ class OutputScrollPhat(pivumeter.OutputDevice):
         self._thread.start()
 
     def run_messages(self):
+        print("run_messages was called")
         self.running = True
         while self.running:
             try:
                 message = self.messages.get(False)
                 self.busy = True
                 scrollphat.clear()
+                print("run_message :", message)
                 scrollphat.write_string(message, 11)
                 length = scrollphat.buffer_len()
-                scrollphat.set_pixel(length + 11, 0, 0)
+                #scrollphat.set_pixel(length + 11, 0, 0)
                 #scrollphat.show()
-                scrollphat.update()
+                #scrollphat.update()
                 time.sleep(1)
                 for x in range(length):
+                    print("scrolling: ",  x)
                     if not self.running: break
-                    scrollphat.scroll(1)
+                    scrollphat.scroll()
                     #scrollphat.show()
                     scrollphat.update()
                     time.sleep(0.05)
@@ -62,7 +65,7 @@ class OutputScrollPhat(pivumeter.OutputDevice):
         pass
 
     def display_fft(self, bins):
-        print("display_vu was Called %s %s",left,right, bins)
+        #print("display_fft was Called ", bins)
         if self.busy: return
         self.busy = True
         #print(bins)
@@ -83,25 +86,26 @@ class OutputScrollPhat(pivumeter.OutputDevice):
         #        _scaled_bins = (255.0 * (bins - 1) / (65535 - 1 - 1.0)).astype(uint8)
         #pad if necessary
         #_scaled_bins[bins == _paddingVal] = 0
-        #print(_scaled_bins)
+        print(_scaled_bins)
         scrollphat.graph(_scaled_bins, low=1, high=255)
         scrollphat.update()
         self.busy = False
 
-    def display_vu(self, left, right, bins):
-        print("display_vu was Called %s %s",left,right, bins)
+    def display_vu(self, left, right):
+        #print("display_vu was Called ",left,right)
         _paddingVal = 1
         _i=0
         _minVal=0
         _maxVal=65535
-        while _i < 11:
-            _i+1
-            _mono = ( left[_i] + right[_i] / 2 )
-            _scaled_bins.append(int(255.0 * (_mono - _minVal) / (_maxVal - _minVal - 1.0 + _paddingVal)))
-        #pad if necessary
-        #_scaled_bins[bins == _paddingVal] = 0
-        #print(_scaled_bins)
-        scrollphat.graph(_scaled_bins, low=1, high=255)
+        _scaled_bins = []
+        #print("Moo ",left,right, _mono)
+        #while _i < 1:
+        #    _i = _i+1
+        #    _scaled_bins.append(int(255.0 * (_mono - _minVal) / (_maxVal - _minVal - 1.0 + _paddingVal)))
+        #    #pad if necessary
+        #    #_scaled_bins[bins == _paddingVal] = 0
+        #    print(_scaled_bins)
+        #    scrollphat.graph(_scaled_bins, low=1, high=255)
         pass
 
     def cleanup(self):
@@ -132,12 +136,16 @@ try:
 
             data = ElementTree.fromstring(buf)
             #print(buf)
+            # https://github.com/wolfspyre/shairport-sync-metadata-reader
+
             ptype = data.find('type').text
             pcode = data.find('code').text
             payload = data.find('data')
             if payload is not None and payload.get('encoding') == 'base64':
                 payload = decodestring(payload.text)
-                print("GotData:", payload)
+                _type = decodestring(ptype)
+                _code = decodestring(pcode)
+                print("GotData: [", ptype, "] [[ ", pcode, "]] ", payload)
 
             # Song title
             if ptype == '636f7265' and pcode == '6d696e6d':

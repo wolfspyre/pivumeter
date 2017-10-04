@@ -155,7 +155,7 @@ class VUServer(socketserver.ThreadingUnixStreamServer):
         socketserver.ThreadingUnixStreamServer.__init__(self, address, handler)
 
     def serve_forever(self):
-        log("Serve called...")
+        log("Serve called... ", self.output_device )
         self.running = True
         self.output_device.start()
         socketserver.ThreadingUnixStreamServer.serve_forever(self)
