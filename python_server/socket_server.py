@@ -194,6 +194,6 @@ def run(output_device):
     running = True
 
 if __name__ == "__main__":
-    run(OutputBlinkt)
+    run(OutputScrollPhat)
     signal.pause()
 
