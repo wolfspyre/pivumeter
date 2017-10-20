@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import pivumeter
-import signal
 import scrollphat
 import threading
 import time
@@ -30,28 +29,34 @@ class OutputScrollPhat(pivumeter.OutputDevice):
         self._thread.start()
 
     def run_messages(self):
-        print("run_messages was called")
+        pivumeter.log("run_messages: called",level=1)
         self.running = True
         while self.running:
             try:
                 message = self.messages.get(False)
                 self.busy = True
+                _msglen = len(message)
                 scrollphat.clear()
-                print("run_message :", message)
-                scrollphat.write_string(message, 11)
-                length = scrollphat.buffer_len()
-                #scrollphat.set_pixel(length + 11, 0, 0)
-                #scrollphat.show()
-                #scrollphat.update()
-                time.sleep(1)
-                for x in range(length):
-                    print("scrolling: ",  x)
-                    if not self.running: break
-                    scrollphat.scroll()
-                    #scrollphat.show()
+                if _msglen <= 3:
+                    #string doesn't needs
+                    scrollphat.write_string(message)
                     scrollphat.update()
-                    time.sleep(0.05)
-
+                    time.sleep(0.75)
+                else:
+                    pivumeter.log("Sending to scroll ({}): {}".format(_msglen, message),level=3)
+                    #prepend with 11 spaces for scrolling
+                    scrollphat.write_string(message, 11)
+                    length = scrollphat.buffer_len()
+                    pivumeter.log("Length: {}".format(length),level=3)
+                    scrollphat.update()
+                    time.sleep(0.25)
+                    for x in range(length):
+                        #pivumeter.log("{}".format(x),level=4)
+                        if not self.running: break
+                        scrollphat.scroll()
+                        scrollphat.update()
+                        time.sleep(0.04)
+                    #pivumeter.log("Done",level=3)
                 scrollphat.clear()
                 self.messages.task_done()
                 self.busy = False
@@ -59,13 +64,12 @@ class OutputScrollPhat(pivumeter.OutputDevice):
                 pass
             except IndexError:
                 pass
-            time.sleep(1)
+            time.sleep(0.4)
 
     def setup(self):
         pass
 
     def display_fft(self, bins):
-        #print("display_fft was Called ", bins)
         if self.busy: return
         self.busy = True
         #print(bins)
@@ -73,7 +77,6 @@ class OutputScrollPhat(pivumeter.OutputDevice):
         # scrollphathd.set_graph(bins, low=0, high=65535, brightness=1.0, x=0, y=0)
         # scrollphat graph is only 8bit (0-255)
         # https://stackoverflow.com/questions/17174407/what-is-an-efficient-way-to-scale-a-int16-numpy-array-to-a-int8-numpy-array
-        #
         #
         # https://github.com/CellProfiler/CellProfiler/issues/2285 #
         _paddingVal = 1
@@ -86,13 +89,14 @@ class OutputScrollPhat(pivumeter.OutputDevice):
         #        _scaled_bins = (255.0 * (bins - 1) / (65535 - 1 - 1.0)).astype(uint8)
         #pad if necessary
         #_scaled_bins[bins == _paddingVal] = 0
-        print(_scaled_bins)
+        #pivumeter.log("display_fft: {}".format(_scaled_bins),level=0)
         scrollphat.graph(_scaled_bins, low=1, high=255)
         scrollphat.update()
         self.busy = False
 
     def display_vu(self, left, right):
-        #print("display_vu was Called ",left,right)
+        #This is called with every datapoint.
+        # pivumeter.log("display_vu was called",4)
         _paddingVal = 1
         _i=0
         _minVal=0
@@ -134,6 +138,7 @@ try:
                 if buf.endswith("</item>"):
                     break
 
+
             data = ElementTree.fromstring(buf)
             #print(buf)
             # https://github.com/wolfspyre/shairport-sync-metadata-reader
@@ -145,15 +150,23 @@ try:
                 payload = decodestring(payload.text)
                 _type = decodestring(ptype)
                 _code = decodestring(pcode)
-                print("GotData: [", ptype, "] [[ ", pcode, "]] ", payload)
+                pivumeter.log("GotData: [{}] [[{}]] : {}".format(ptype, pcode, payload),level=3)
+
 
             # Song title
             if ptype == '636f7265' and pcode == '6d696e6d':
-                print("Song Title: ",payload.strip())
+                pivumeter.log("Song Title: {}".format(payload.strip()),level=3)
                 if payload.strip() != last_song:
-                    print("sending payload to output_device: ",payload.strip())
+                    pivumeter.log("sending payload to output_device: {}".format(payload.strip()),level=3)
                     output_device.messages.put(payload.strip())
                     last_song = payload
+            elif ptype == 'localmsg':
+                if pcode == 'test' and payload is not None:
+                    _p=payload.text
+                    pivumeter.log("RX TEST {}".format(_p),level=3)
+                    output_device.messages.put(_p)
+                else:
+                    pivumeter.log("RX TEST but no payload",level=2)
 
         except os.error as e:
             if e.errno == 11:
@@ -163,7 +176,7 @@ try:
             raise e
 
         os.close(f)
-        time.sleep(0.001)
+        time.sleep(0.005)
 
 
 #        # other messages
